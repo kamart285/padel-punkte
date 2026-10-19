@@ -1,5 +1,4 @@
 {
-  "id": "./padel-punkte",
   "name": "Padel Punkte",
   "short_name": "Padel Punkte",
   "description": "Großer Padel-Spielstand fürs Handy am Zaun, zählbar per Uhr, Fernbedienung oder Antippen",
@@ -7,11 +6,7 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "display_override": [
-    "fullscreen",
-    "standalone"
-  ],
-  "orientation": "any",
+  "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#000000",
   "icons": [
