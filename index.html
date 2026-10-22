@@ -10,8 +10,8 @@
 <meta name="application-name" content="Padel Punkte">
 <meta name="apple-mobile-web-app-title" content="Padel Punkte">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
 <style>
 :root{--bg:#000;--fg:#fff;--dim:#9aa3ad;--line:#2a2f36;--a:#ffd400;--b:#36d6ff;--panel:#14181d;--btn:#232931}
 body.light{--bg:#fff;--fg:#000;--dim:#444;--line:#ccc;--a:#b25a00;--b:#0050c8;--panel:#f1f1f1;--btn:#e2e2e2}
@@ -46,6 +46,7 @@ body.light .side.flash{background:rgba(0,0,0,.12)}
 .dot.on{background:#20d36b}.dot.err{background:#ff4d4d}
 #conn{font-size:3.4vh;color:var(--dim);display:flex;align-items:center;gap:.8vh;min-height:3.6vh}
 #banner{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) scale(.9);background:var(--fg);color:var(--bg);font-size:13vh;font-weight:900;padding:2vh 5vh;border-radius:3vh;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;text-align:center;white-space:nowrap}
+#banner.undo{background:#e5484d;color:#fff;font-size:min(13vh,11vw);box-shadow:0 0 0 100vmax rgba(229,72,77,.18)}
 #banner.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 #winner{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.88);gap:3vh;text-align:center;padding:4vh}
 body.light #winner{background:rgba(255,255,255,.93)}
@@ -146,6 +147,8 @@ input[type=text]{font:inherit;font-size:18px;padding:10px 12px;border-radius:10p
       <div class="sw"><span>Antippen zählt<small>Linke Hälfte = Punkt links, rechte = Punkt rechts. Lange drücken = rückgängig</small></span><input type="checkbox" id="cTap"></div>
       <div class="sw"><span>Helle Anzeige<small>Weißer Hintergrund, kann in praller Sonne besser sein</small></span><input type="checkbox" id="cLight"></div>
       <div class="sw"><span>Ton bei Punkt</span><input type="checkbox" id="cBeep"></div>
+      <div class="sw"><span>Doppelklick = Zurück<small>Dieselbe Knopf-Taste 2× schnell: Punkt davor wird zurückgenommen (gilt für Bluetooth-Knöpfe/Tasten)</small></span><input type="checkbox" id="cDbl"></div>
+      <div class="sw"><span>Doppelklick-Tempo <b id="vDbl"></b><small>Kürzer = sicherer gegen Versehen, länger = leichter zu treffen</small></span><input type="range" id="rDbl" min="400" max="1200" step="100" style="width:40%"></div>
     </div>
    </div>
    <div>
@@ -166,7 +169,7 @@ input[type=text]{font:inherit;font-size:18px;padding:10px 12px;border-radius:10p
       <div class="keys" id="keys"></div>
       <div id="lastKey">Letzte Taste: –</div>
     </div>
-    <div class="ver">Padel Punkte v5 · Daten bleiben auf diesem Gerät</div>
+    <div class="ver">Padel Punkte v6 · Daten bleiben auf diesem Gerät</div>
    </div>
   </div>
 </div>

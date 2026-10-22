@@ -1,5 +1,5 @@
 // Padel Anzeige – Service Worker (offline cache, stale-while-revalidate)
-const CACHE = 'padel-punkte-v5';
+const CACHE = 'padel-punkte-v6';
 const ASSETS = ['./', './index.html', './manifest.webmanifest',
   './score.js', './app.js', './qrcode.js', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 

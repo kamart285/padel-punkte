@@ -7,6 +7,7 @@
   var RELAY = 'https://ntfy.sh/';
   var DEF_KEYS = { A: ['ArrowLeft', 'ArrowUp', 'PageUp', '1', 'a'], B: ['ArrowRight', 'ArrowDown', 'PageDown', '2', 'b'], U: ['Backspace', 'Delete', '0', 'z', 'u'] };
 
+  var DBL_MS = 700; // Doppelklick-Fenster (ms): gleiche Taste 2x so schnell = Punkt zurück
   function randCode() {
     var abc = 'abcdefghijkmnpqrstuvwxyz23456789', a = new Uint8Array(16), s = '';
     crypto.getRandomValues(a); for (var i = 0; i < a.length; i++) s += abc[a[i] % abc.length];
@@ -15,7 +16,7 @@
   function load(k, d) { try { var v = JSON.parse(localStorage.getItem(k)); return v || d; } catch (e) { return d; } }
 
   var set = load(LS_SET, {});
-  var defaults = { nameA: 'Ich', nameB: 'Gegner', swap: false, tap: true, light: false, beep: false, relay: false, topic: '', keys: DEF_KEYS };
+  var defaults = { nameA: 'Ich', nameB: 'Gegner', swap: false, tap: true, light: false, beep: false, relay: false, topic: '', keys: DEF_KEYS, dbl: true, dblMs: DBL_MS };
   for (var k in defaults) if (set[k] === undefined) set[k] = JSON.parse(JSON.stringify(defaults[k]));
   if (!set.topic) set.topic = randCode();
   // Code aus Link übernehmen (#code=… vom QR-Code)
@@ -30,7 +31,7 @@
 
   /* ---------- Anzeige ---------- */
   var bannerT;
-  function banner(t) { var b = $('banner'); b.textContent = t; b.classList.add('show'); clearTimeout(bannerT); bannerT = setTimeout(function () { b.classList.remove('show'); }, 1700); }
+  function banner(t, cls) { var b = $('banner'); b.textContent = t; b.classList.toggle('undo', cls === 'undo'); b.classList.add('show'); clearTimeout(bannerT); bannerT = setTimeout(function () { b.classList.remove('show'); }, 1700); }
   function name(i) { return i === 0 ? set.nameA : set.nameB; }
 
   function render() {
@@ -85,8 +86,30 @@
     if (st.setsWon[team] > prev.setsWon[team]) banner('Satz ' + name(team));
     else if (st.games[team] > prev.games[team]) banner('Spiel ' + name(team));
   }
-  function point(team) { if (st.winner !== null) return; commit(S.point(st, team), team); if (navigator.vibrate) navigator.vibrate(40); }
-  function undo() { if (!st.history.length) return; commit(S.undo(st)); banner('↶ Rückgängig'); if (navigator.vibrate) navigator.vibrate([30, 60, 30]); }
+  function vib(p) {
+    try { if (window.PadelNative && PadelNative.vibrate) { PadelNative.vibrate(JSON.stringify([].concat(p))); return; } } catch (e) {}
+    if (navigator.vibrate) navigator.vibrate(p);
+  }
+  function point(team) { lastBtn = null; if (st.winner !== null) return; commit(S.point(st, team), team); vib(40); }
+  function undo() { lastBtn = null; if (!st.history.length) return; commit(S.undo(st)); banner('↶ Rückgängig'); vib([30, 60, 30]); }
+
+  /* ---------- Doppelklick = Zurück (Tasten/Fernbedienung) ----------
+     1. Druck zählt sofort. Kommt dieselbe Taste innerhalb von dblMs nochmal,
+     wird der Stand von VOR dem 1. Druck wiederhergestellt und zusätzlich ein Schritt
+     (der Fehlklick davor) zurückgenommen. Ein 3. Druck zählt wieder normal. */
+  var lastBtn = null;
+  function btnPoint(team, src) {
+    var now = Date.now(), win = Math.max(300, Math.min(1500, +set.dblMs || DBL_MS));
+    if (set.dbl && lastBtn && lastBtn.team === team && lastBtn.src === src && now - lastBtn.t <= win) {
+      var before = lastBtn.before, seq = st.seq; lastBtn = null;
+      var ns = before.history.length ? S.undo(before) : before;
+      ns = JSON.parse(JSON.stringify(ns)); ns.seq = seq + 1;
+      commit(ns); banner('↶ Punkt zurück', 'undo'); vib([80, 80, 80, 80, 250]);
+      return;
+    }
+    var prev = st; point(team);
+    lastBtn = { team: team, src: src, t: now, before: prev };
+  }
   function newMatch() { st = S.newMatch(st.cfg); saveState(); render(); }
 
   /* ---------- Antippen ---------- */
@@ -123,7 +146,7 @@
     if (!hit) return;
     e.preventDefault();
     if (e.repeat) return;
-    if (hit === 'U') undo(); else point(hit === 'A' ? 0 : 1);
+    if (hit === 'U') undo(); else btnPoint(hit === 'A' ? 0 : 1, 'key');
   });
   function renderKeys() {
     var rows = [['A', 'Punkt ' + set.nameA], ['B', 'Punkt ' + set.nameB], ['U', 'Rückgängig']], h = '';
@@ -168,8 +191,8 @@
       if (cmd === 'UNDO') { commit(ns); banner('↶ Rückgängig'); } else commit(ns, team);
       return;
     }
-    if (cmd === 'A' || cmd === 'ICH' || cmd === 'WIR') point(0);
-    else if (cmd === 'B' || cmd === 'GEGNER' || cmd === 'IHR') point(1);
+    if (cmd === 'A' || cmd === 'ICH' || cmd === 'WIR') btnPoint(0, 'relay');
+    else if (cmd === 'B' || cmd === 'GEGNER' || cmd === 'IHR') btnPoint(1, 'relay');
     else if (cmd === 'UNDO' || cmd === 'U') undo();
     else if (cmd === 'RESET') { newMatch(); banner('Neues Match'); }
   }
@@ -230,7 +253,7 @@
   function openSettings() {
     $('iA').value = set.nameA; $('iB').value = set.nameB;
     $('cGolden').checked = !!st.cfg.golden; $('cSuper').checked = !!st.cfg.superTb;
-    $('cTap').checked = !!set.tap; $('cLight').checked = !!set.light; $('cBeep').checked = !!set.beep; $('cRelay').checked = !!set.relay;
+    $('cTap').checked = !!set.tap; $('cLight').checked = !!set.light; $('cBeep').checked = !!set.beep; $('cRelay').checked = !!set.relay; $('cDbl').checked = !!set.dbl; $('rDbl').value = set.dblMs; $('vDbl').textContent = (set.dblMs / 1000).toFixed(1).replace('.', ',') + ' s';
     [].forEach.call($('segBest').children, function (b) { b.classList.toggle('on', +b.dataset.v === st.cfg.bestOf); });
     renderKeys(); renderQR();
     $('settings').classList.add('show');
@@ -248,6 +271,8 @@
   $('cTap').onchange = function () { set.tap = this.checked; saveSet(); };
   $('cLight').onchange = function () { set.light = this.checked; saveSet(); render(); };
   $('cBeep').onchange = function () { set.beep = this.checked; saveSet(); if (set.beep) beep(); };
+  $('cDbl').onchange = function () { set.dbl = this.checked; saveSet(); };
+  $('rDbl').oninput = function () { set.dblMs = +this.value; $('vDbl').textContent = (set.dblMs / 1000).toFixed(1).replace('.', ',') + ' s'; saveSet(); };
   $('cRelay').onchange = function () { set.relay = this.checked; saveSet(); connect(); };
   $('bNew').onclick = function () { if (confirm('Neues Match starten? Der aktuelle Stand wird gelöscht.')) { newMatch(); closeSettings(); banner('Neues Match'); } };
   $('bNewCode').onclick = function () { if (!confirm('Neuen Code erzeugen? Danach musst du ihn in der Zepp-App neu eintragen.')) return; set.topic = randCode(); lastId = null; seen = []; saveRelay(); saveSet(); renderQR(); connect(); };
